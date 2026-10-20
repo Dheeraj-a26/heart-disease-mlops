@@ -7,3 +7,6 @@ jupyter
 joblib
 mlflow
 pytest
+fastapi
+uvicorn
+httpx
