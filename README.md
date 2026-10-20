@@ -1,58 +1,73 @@
-# Heart Disease Classification — MLOps Project
+# Heart Disease Classification --- MLOps Project
 
 ## 1. Project Overview
 
-This project implements an end-to-end Machine Learning Operations (MLOps) pipeline for heart disease classification using the Cleveland Heart Disease dataset.
+This project implements an end-to-end Machine Learning Operations
+(MLOps) pipeline for binary heart disease classification using the
+Cleveland Heart Disease dataset.
 
-The project covers data acquisition, preprocessing, exploratory data analysis (EDA), model development, experiment tracking, model packaging, automated testing, Docker containerization, Kubernetes deployment, and application logging.
+The workflow covers:
 
-**Disclaimer:** This project is intended for educational purposes only. Its predictions are not medical diagnoses and must not be used for clinical decisions.
+-   Dataset acquisition and preprocessing
+-   Exploratory data analysis (EDA)
+-   Feature preprocessing and model comparison
+-   Cross-validation and held-out evaluation
+-   MLflow experiment tracking
+-   Model serialization and reproducibility
+-   Automated tests and GitHub Actions CI
+-   FastAPI prediction service
+-   Docker containerization
+-   Kubernetes deployment on a local Docker Desktop cluster
+-   Cloud lab VM deployment using Docker
+-   Basic API health checks, request counters, and prediction-latency
+    metrics
 
-## 2. Project Architecture
+> **Educational-use disclaimer:** This project is for learning and
+> demonstration only. Its predictions are not medical diagnoses and must
+> not be used for clinical decisions.
 
-```text
+## 2. Architecture
+
+``` text
 Cleveland Heart Disease Dataset
               |
               v
        Data Acquisition
               |
               v
- Data Cleaning and Preprocessing
+   Cleaning and Preparation
               |
               v
-   Exploratory Data Analysis
+  EDA and Feature Inspection
               |
               v
-       Model Training
-    (Logistic Regression
-       and Random Forest)
+  Preprocessing + Model Training
+   (Logistic Regression and
+        Random Forest)
               |
               v
-    Cross-Validation and
-      Model Evaluation
+ Cross-validation and Evaluation
               |
               v
-    MLflow Experiment Tracking
+       MLflow Tracking
               |
               v
-       Saved ML Pipeline
+ Saved preprocessing/model pipeline
               |
               v
-       FastAPI Prediction API
+        FastAPI service
+       /health /predict /metrics
               |
-              v
-        Docker Container
-              |
-              v
-    Kubernetes Deployment
-              |
-              v
-       Health Checks and Logs
+       +------+------+
+       |             |
+       v             v
+ Docker container  Kubernetes Deployment
+ (lab VM)          (Docker Desktop local)
 ```
 
-## 3. Project Structure
+## 3. Repository Structure
 
-```text
+``` text
 heart-disease-mlops/
 ├── .github/
 │   └── workflows/
@@ -63,6 +78,7 @@ heart-disease-mlops/
 │   └── service.yaml
 ├── models/
 ├── notebooks/
+│   └── 01_exploratory_data_analysis.ipynb
 ├── reports/
 ├── src/
 │   ├── __init__.py
@@ -74,61 +90,57 @@ heart-disease-mlops/
 ├── tests/
 │   ├── test_model.py
 │   └── test_api.py
-├── Dockerfile
 ├── .dockerignore
 ├── .gitignore
+├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
 
+Generated datasets, model artifacts, and MLflow tracking files may be
+created locally by the workflow and are not necessarily tracked by Git.
+
 ## 4. Technology Stack
 
-- **Programming language:** Python 3.11
-- **Data processing:** Pandas, NumPy
-- **Machine learning:** Scikit-learn
-- **Experiment tracking:** MLflow
-- **Model serialization:** Joblib
-- **API framework:** FastAPI
-- **API server:** Uvicorn
-- **Testing:** Pytest
-- **Version control:** Git and GitHub
-- **CI/CD:** GitHub Actions
-- **Containerization:** Docker
-- **Orchestration:** Kubernetes with Docker Desktop
+-   **Language:** Python 3.11
+-   **Data processing:** Pandas, NumPy
+-   **Machine learning:** scikit-learn
+-   **Experiment tracking:** MLflow
+-   **Model serialization:** Joblib
+-   **API framework:** FastAPI
+-   **ASGI server:** Uvicorn
+-   **Testing:** Pytest
+-   **Version control:** Git and GitHub
+-   **CI:** GitHub Actions
+-   **Containerization:** Docker
+-   **Orchestration:** Kubernetes on Docker Desktop
+-   **Cloud/lab demonstration:** Docker container running on the lab VM
 
 ## 5. Environment Setup
 
 ### Prerequisites
 
-Install the following tools:
-
-- Python 3.11
-- Git
-- Docker Desktop
-- Kubernetes enabled in Docker Desktop
+Install Python 3.11, Git, and Docker. For the local Kubernetes steps,
+enable Kubernetes in Docker Desktop and install `kubectl`.
 
 Clone the repository:
 
-```powershell
+``` powershell
 git clone https://github.com/Dheeraj-a26/heart-disease-mlops.git
 cd heart-disease-mlops
 ```
 
-Create a virtual environment:
+Create and activate a virtual environment in Windows PowerShell:
 
-```powershell
+``` powershell
 python -m venv .venv
-```
-
-Activate it in Windows PowerShell:
-
-```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 .\.venv\Scripts\Activate.ps1
 ```
 
-Install the dependencies:
+Install dependencies:
 
-```powershell
+``` powershell
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -137,190 +149,200 @@ pip install -r requirements.txt
 
 Download the dataset:
 
-```powershell
+``` powershell
 python src/download_data.py
 ```
 
-Clean and prepare the dataset:
+Prepare the cleaned dataset:
 
-```powershell
+``` powershell
 python src/prepare_data.py
 ```
 
-The preprocessing process handles missing values and converts the original disease-severity field into a binary classification target.
+The source dataset contains 303 records and 14 original columns,
+including the original disease-severity target. The preparation script
+handles `?` values as missing data, creates a binary target from the
+original target field, and saves the cleaned dataset.
 
-- `0`: No disease detected in the dataset.
-- `1`: Disease detected in the dataset.
+Target encoding:
 
-The cleaned dataset contains 303 records and 14 columns: 13 input features and one target column.
+-   `0`: no disease indicated by the dataset label
+-   `1`: disease indicated by the dataset label
 
-The dataset contains missing values, particularly in the `ca` and `thal` features. Missing values are handled during preprocessing.
+The cleaned dataset contains 303 rows and 14 columns: 13 input features
+and one binary target. Missing values occur in features including `ca`
+and `thal`; the model pipeline imputes missing feature values during
+training and inference.
 
 ## 7. Exploratory Data Analysis
 
-The Jupyter notebook in `notebooks/` contains exploratory data analysis.
+The notebook `notebooks/01_exploratory_data_analysis.ipynb` contains the
+EDA.
 
 The analysis includes:
 
-- Dataset structure and data types.
-- Missing-value inspection.
-- Feature distribution histograms.
-- Target class distribution.
-- Correlation heatmap.
-- Examination of relationships between numerical features.
+-   Dataset structure and data types
+-   Missing-value inspection
+-   Feature histograms
+-   Target class distribution
+-   Correlation heatmap
+-   Relationships between selected numerical features
 
-The target distribution is approximately:
+Target distribution in the cleaned dataset:
 
-| Class | Records | Percentage |
-|---|---:|---:|
-| 0 | 164 | 54.1% |
-| 1 | 139 | 45.9% |
+  Class     Records   Percentage
+  ------- --------- ------------
+  0             164        54.1%
+  1             139        45.9%
 
-These results describe the dataset and do not represent disease prevalence in the general population.
+These counts describe this dataset only; they do not represent disease
+prevalence in the general population.
 
 ## 8. Feature Engineering and Model Development
 
-The project uses numerical and categorical features.
+The preprocessing pipeline separates numerical and categorical features.
 
 ### Numerical features
 
-- Age
-- Resting blood pressure
-- Cholesterol
-- Maximum heart rate achieved
-- ST depression (`oldpeak`)
+-   `age`
+-   `trestbps`
+-   `chol`
+-   `thalach`
+-   `oldpeak`
 
 Numerical preprocessing uses median imputation and standard scaling.
 
 ### Categorical features
 
-- Sex
-- Chest pain type
-- Fasting blood sugar
-- Resting electrocardiographic results
-- Exercise-induced angina
-- Slope
-- Number of major vessels (`ca`)
-- Thalassemia-related category (`thal`)
+-   `sex`
+-   `cp`
+-   `fbs`
+-   `restecg`
+-   `exang`
+-   `slope`
+-   `ca`
+-   `thal`
 
-Categorical preprocessing uses most-frequent imputation and one-hot encoding.
+Categorical preprocessing uses most-frequent imputation and one-hot
+encoding.
 
-### Models
+### Models and evaluation
 
-Two classification algorithms are evaluated:
+Two classifiers are trained and compared:
 
-1. Logistic Regression
-2. Random Forest Classifier
+1.  Logistic Regression
+2.  Random Forest Classifier
 
-The training pipeline uses a stratified train-test split and stratified five-fold cross-validation.
+The workflow uses a stratified train/test split and stratified five-fold
+cross-validation. Evaluation includes accuracy, precision, recall,
+ROC-AUC, confusion matrices, and classification reports.
 
-Evaluation metrics include:
+Run training:
 
-- Accuracy
-- Precision
-- Recall
-- ROC-AUC
-- Confusion matrix
-- Classification report
-
-Run the training pipeline:
-
-```powershell
+``` powershell
 python src/train.py
 ```
 
-The model comparison results are saved under `reports/`.
+The model comparison table is saved under `reports/`, and the selected
+model pipeline is saved to:
 
-The selected model is saved to:
-
-```text
+``` text
 models/heart_disease_model.joblib
 ```
 
-### Evaluation results
+### Recorded evaluation results
 
-The following results were obtained during the current experiment:
+The following values are from the recorded experiment and depend on the
+current dataset split and configuration.
 
-| Metric | Logistic Regression | Random Forest |
-|---|---:|---:|
-| Cross-validation accuracy | 84.71% | 80.16% |
-| Test accuracy | 88.52% | 88.52% |
-| Test precision | 83.87% | 81.82% |
-| Test recall | 92.86% | 96.43% |
-| Test ROC-AUC | 96.65% | 94.64% |
+  Metric                        Logistic Regression   Random Forest
+  --------------------------- --------------------- ---------------
+  Cross-validation accuracy                  84.71%          80.16%
+  Test accuracy                              88.52%          88.52%
+  Test precision                             83.87%          81.82%
+  Test recall                                92.86%          96.43%
+  Test ROC-AUC                               96.65%          94.64%
 
-Logistic Regression was selected based on its cross-validation performance and higher test ROC-AUC. Random Forest achieved higher recall on the held-out test split.
-
-These results are specific to the current dataset split and should not be interpreted as evidence of clinical effectiveness.
+Logistic Regression was selected based on its cross-validation
+performance and higher test ROC-AUC. Random Forest achieved higher
+recall on this particular held-out split. These metrics do not establish
+clinical effectiveness.
 
 ## 9. MLflow Experiment Tracking
 
-MLflow is used to track model training experiments.
+MLflow records model parameters, metrics, and relevant artifacts for the
+training experiments.
 
-The experiment records model parameters, evaluation metrics, and relevant artifacts.
+Start the MLflow UI from the project root:
 
-Start the MLflow user interface:
-
-```powershell
+``` powershell
 python -m mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
 ```
 
-Open the following address in a browser:
+Open:
 
+``` text
 http://127.0.0.1:5000
+```
 
 The experiment is named:
 
-```text
+``` text
 heart-disease-classification
 ```
 
-MLflow allows the results of Logistic Regression and Random Forest to be compared across runs.
+The UI can be used to compare the Logistic Regression and Random Forest
+runs. Tracking files and the local SQLite database are generated during
+execution and may be excluded from Git.
 
-## 10. Model Prediction
+## 10. Run a Sample Model Prediction
 
-The saved model can be tested using:
+Run the local prediction script:
 
-```powershell
+``` powershell
 python src/predict_test.py
 ```
 
-The script loads the serialized preprocessing and classification pipeline and produces a prediction for a sample input.
-
-The preprocessing pipeline is stored together with the trained model so that the same transformations can be applied during inference.
+The serialized artifact contains the preprocessing pipeline together
+with the trained classifier, so inference applies the same feature
+transformations used during training.
 
 ## 11. FastAPI Prediction Service
 
-The project provides a FastAPI service with the following endpoints:
+The API provides the following endpoints:
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/` | GET | API information |
-| `/health` | GET | Health and model-loaded status |
-| `/predict` | POST | Generate a classification prediction |
-| `/docs` | GET | Interactive API documentation |
+  Endpoint     Method   Purpose
+  ------------ -------- -----------------------------------------------
+  `/`          GET      API information
+  `/health`    GET      Health status and model-loaded status
+  `/predict`   POST     Predict the dataset class for an input record
+  `/metrics`   GET      Basic request and prediction-latency metrics
+  `/docs`      GET      Interactive API documentation
 
 Start the API locally:
 
-```powershell
+``` powershell
 uvicorn src.api:app --host 127.0.0.1 --port 8000
 ```
 
-Health check:
+In another terminal, check health:
 
-```powershell
+``` powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-Open the interactive documentation:
+Open interactive documentation:
 
+``` text
 http://127.0.0.1:8000/docs
+```
 
-### Example prediction request
+### Example prediction input
 
-Send a POST request to `/predict` using the following JSON input:
+Send a `POST` request to `/predict` with JSON containing all 13
+features:
 
-```json
+``` json
 {
   "age": 55,
   "sex": 1,
@@ -338,9 +360,9 @@ Send a POST request to `/predict` using the following JSON input:
 }
 ```
 
-Example response:
+A recorded example response for this input was:
 
-```json
+``` json
 {
   "prediction": 0,
   "label": "disease_not_detected",
@@ -353,163 +375,206 @@ Example response:
 }
 ```
 
-The example response demonstrates the current model output for this sample input. Confidence represents the model's predicted class probability, not a clinically validated estimate of medical risk.
+The output is a model classification based on the dataset's labels. The
+returned class probability is not a clinically validated estimate of a
+person's medical risk. The model requires all 13 input features; it does
+not make predictions from age and sex alone.
 
 ## 12. Automated Testing
 
-The project uses Pytest to validate model and API behavior.
+The project uses Pytest for model and API tests.
 
-Run the test suite:
+Run tests from the repository root:
 
-```powershell
+``` powershell
 python -m pytest tests/ -v
 ```
 
-The tests cover model functionality and API behavior, including:
+The tests cover model functionality and API behavior, including the home
+endpoint, health endpoint, prediction requests, invalid inputs, and the
+metrics endpoint.
 
-- API home endpoint.
-- Health endpoint.
-- Successful prediction requests.
-- Invalid input handling.
-- Model-related checks.
+The most recent recorded local test result was **11 tests passed**.
+Re-run the suite after any code or dependency changes and update this
+statement if the result changes.
 
-The current test suite contains 10 tests, which passed during local verification.
+## 13. Continuous Integration
 
-## 13. Continuous Integration and Delivery
+The GitHub Actions workflow is defined in:
 
-GitHub Actions runs the configured CI workflow when changes are pushed to the repository or pull requests are opened against the `main` branch.
-
-The workflow includes:
-
-1. Checking out the repository.
-2. Setting up Python.
-3. Installing dependencies.
-4. Downloading the dataset.
-5. Preparing the dataset.
-6. Training the models.
-7. Running automated tests.
-
-The workflow configuration is located at:
-
-```text
+``` text
 .github/workflows/ci.yml
 ```
 
-Successful GitHub Actions runs provide evidence that the configured pipeline completes in the CI environment.
+The configured workflow performs these steps:
+
+1.  Checks out the repository.
+2.  Sets up Python.
+3.  Installs dependencies.
+4.  Downloads the dataset.
+5.  Prepares the dataset.
+6.  Trains the models.
+7.  Runs automated tests.
+
+The four workflow runs visible in GitHub Actions, including the latest
+run for commit `f2e0b49` (`Add API monitoring metrics and tests`),
+showed green success indicators at the time of verification. Check the
+Actions tab for the latest status after future pushes.
+
+Repository: https://github.com/Dheeraj-a26/heart-disease-mlops
 
 ## 14. Docker Containerization
 
-Build the Docker image:
+Build the Docker image from the repository root:
 
-```powershell
-docker build -t heart-disease-api:1.0 .
+``` powershell
+docker build -t heart-disease-api:1.1 .
 ```
 
 Run the container:
 
-```powershell
-docker run --rm -p 8000:8000 heart-disease-api:1.0
+``` powershell
+docker run --rm --name heart-disease-api-container -p 8000:8000 heart-disease-api:1.1
 ```
 
-Check the health endpoint from another terminal:
+Check health from another terminal:
 
-```powershell
+``` powershell
 Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-The API is packaged with its dependencies and saved model so it can run in a containerized environment.
+Open the API documentation at:
 
-## 15. Kubernetes Deployment
-
-The project includes Kubernetes Deployment and Service manifests in the `k8s/` directory.
-
-The local Kubernetes cluster is provided by Docker Desktop.
-
-Check the current Kubernetes context:
-
-```powershell
-kubectl config current-context
+``` text
+http://127.0.0.1:8000/docs
 ```
 
-Check the cluster nodes:
+The Docker image packages the Python runtime, dependencies, API source,
+and serialized model needed to serve predictions. The image does not
+contain every repository file, such as notebooks and tests.
 
-```powershell
+### Lab VM deployment verification
+
+The image `heart-disease-api:1.1` was built and run on the lab VM. The
+following commands were successfully tested on that VM:
+
+``` bash
+docker ps
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+```
+
+A sample `POST /predict` request returned a prediction response. After
+one successful prediction, the metrics endpoint reported:
+
+-   `successful_predictions`: `1`
+-   `failed_predictions`: `0`
+-   `prediction_response_time_ms_last`: approximately `110.74`
+-   `average_prediction_response_time_ms`: approximately `110.74`
+
+These are observations from that test session, not fixed values. The
+VM's local address `localhost:8000` is accessible from within the VM;
+external access depends on the lab's networking and firewall
+configuration.
+
+To inspect application logs:
+
+``` bash
+docker logs --tail 50 heart-disease-api-container
+```
+
+## 15. Kubernetes Deployment (Docker Desktop)
+
+The project includes Kubernetes Deployment and Service manifests in
+`k8s/`. The Kubernetes demonstration was tested on a local Docker
+Desktop cluster. This is separate from the Docker container running on
+the lab VM.
+
+Check the current context and nodes:
+
+``` powershell
+kubectl config current-context
 kubectl get nodes
 ```
 
-Apply the Deployment and Service:
+Apply the manifests:
 
-```powershell
+``` powershell
 kubectl apply -f k8s/deployment.yaml
 kubectl apply -f k8s/service.yaml
 ```
 
 Inspect the deployment:
 
-```powershell
+``` powershell
 kubectl get deployments
 kubectl get pods
 kubectl get services
 ```
 
-The application is deployed using the Docker image:
+Confirm that the image referenced by `k8s/deployment.yaml` matches the
+image tag available in the local Docker Desktop environment. If you
+change the manifest, reapply it.
 
-```text
-heart-disease-api:1.0
-```
+Forward the service port:
 
-The Deployment configures readiness and liveness probes using the `/health` endpoint and specifies container resource requests and limits.
-
-### Access the API through Kubernetes
-
-Start port forwarding:
-
-```powershell
+``` powershell
 kubectl port-forward service/heart-disease-api-service 8001:8000
 ```
 
-Keep this terminal running.
+Keep that terminal running. Open:
 
-Open the API documentation:
-
+``` text
 http://127.0.0.1:8001/docs
+```
 
-Check the health endpoint from another terminal:
+Check health from another terminal:
 
-```powershell
+``` powershell
 Invoke-RestMethod http://127.0.0.1:8001/health
 ```
 
-Example health response:
-
-```json
-{
-  "status": "healthy",
-  "model_loaded": true
-}
-```
-
-The API was successfully tested through Kubernetes, including a prediction request that returned HTTP 200.
+The Kubernetes deployment was previously verified with a running pod and
+a successful prediction request. Re-run the commands and capture fresh
+screenshots for the final submission.
 
 ## 16. Monitoring and Logging
 
-The API uses a health endpoint and Kubernetes readiness and liveness probes to check application availability.
+The FastAPI application provides a `/health` endpoint and a `/metrics`
+endpoint.
 
-Application logs are available through:
+The `/metrics` response includes:
 
-```powershell
+-   `total_requests`
+-   `successful_predictions`
+-   `failed_predictions`
+-   `prediction_response_time_ms_total`
+-   `prediction_response_time_ms_last`
+-   `average_prediction_response_time_ms`
+
+Example command:
+
+``` bash
+curl http://localhost:8000/metrics
+```
+
+The implementation uses in-memory counters and latency values. These
+reset when the application process restarts and are not a replacement
+for persistent, multi-instance production monitoring. A dedicated
+Prometheus/Grafana dashboard has not been implemented.
+
+Docker logs can be inspected using `docker logs`; Kubernetes logs can be
+inspected using:
+
+``` powershell
 kubectl logs deployment/heart-disease-api
 ```
 
-The logs show application startup, health-check requests, and prediction requests.
-
-The current implementation provides basic operational logging. A full Prometheus/Grafana metrics dashboard has not been implemented.
-
 ## 17. Reproducibility
 
-To reproduce the workflow from the repository root:
+From the repository root, the core workflow can be rerun using:
 
-```powershell
+``` powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
@@ -519,28 +584,82 @@ python src/train.py
 python -m pytest tests/ -v
 ```
 
-Docker and Kubernetes can then be used to package and deploy the API.
+Then run MLflow, the API, Docker, or Kubernetes as described above.
 
-The exact model metrics may change if the dataset, dependencies, training configuration, or random seeds are changed.
+Metrics can vary if the dataset, dependencies, random seeds, or training
+configuration change. Only load model artifacts from trusted sources
+because serialized Python model files can pose a security risk if
+untrusted.
 
 ## 18. Limitations
 
-- The dataset contains only 303 records.
-- The results depend on the selected training and test split.
-- High test-set metrics do not establish clinical validity.
-- Model confidence is not necessarily calibrated medical risk.
-- The current deployment is intended for local educational demonstration.
-- The implementation does not provide a production-grade medical service.
-- Basic application logs are implemented, but a dedicated monitoring dashboard is not included.
+-   The dataset contains only 303 records.
+-   Evaluation results depend on the selected train/test split and
+    experimental setup.
+-   High test-set metrics do not establish clinical validity.
+-   Predicted class probabilities may not be calibrated medical risks.
+-   The API requires all 13 model features.
+-   Basic in-memory monitoring is implemented, but no dedicated
+    Prometheus/Grafana dashboard is included.
+-   The local Kubernetes deployment and lab VM Docker deployment are
+    separate demonstrations.
+-   This is an educational project, not a production-grade medical
+    service.
 
-## 19. Repository
+## 19. Final Validation
+
+Run these commands from the repository root before submission.
+
+### Run the automated tests
+
+```powershell
+python -m pytest tests/ -v
+```
+
+### Verify the API
+
+Start the API or Docker container, then run:
+
+```bash
+curl http://localhost:8000/health
+curl http://localhost:8000/metrics
+```
+
+Send the sample JSON request from Section 11 to `POST /predict`, then query `/metrics` again to verify that the successful-prediction counter and latency values update.
+
+### Verify Docker
+
+```bash
+docker ps
+docker logs --tail 50 heart-disease-api-container
+```
+
+### Verify Kubernetes (Docker Desktop)
+
+```powershell
+kubectl get deployments
+kubectl get pods
+kubectl get services
+kubectl logs deployment/heart-disease-api
+```
+
+For the assignment report, describe the implemented workflow and include the actual results produced by these checks. Capture evidence only where the assignment submission instructions require it; use screenshots directly from the running application or terminal rather than fabricated examples.
+
+## 20. Repository
 
 GitHub repository:
 
 https://github.com/Dheeraj-a26/heart-disease-mlops
 
-## 20. Conclusion
+## 21. Conclusion
 
-This project demonstrates an end-to-end MLOps workflow for a heart disease classification model, covering data processing, model evaluation, experiment tracking, model serialization, automated testing, CI/CD, Docker containerization, Kubernetes deployment, and basic application logging.
+This project demonstrates an end-to-end educational MLOps workflow for
+heart disease classification: data acquisition, preprocessing, EDA,
+model comparison, MLflow experiment tracking, model serialization,
+automated testing, GitHub Actions CI, FastAPI serving, Docker
+containerization, Kubernetes deployment, and basic API monitoring.
 
-The project illustrates how machine learning models can be packaged and deployed as API services with repeatable workflows and operational health checks.
+It illustrates how a trained machine learning pipeline can be packaged
+and served reproducibly, while highlighting the limitations of small
+datasets and the distinction between an educational classification
+output and a medical diagnosis.
