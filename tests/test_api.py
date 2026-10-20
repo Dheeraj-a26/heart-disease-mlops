@@ -80,3 +80,17 @@ def test_prediction_rejects_invalid_input():
     response = client.post("/predict", json=payload)
 
     assert response.status_code == 422
+
+
+def test_metrics_endpoint():
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "total_requests" in data
+    assert "successful_predictions" in data
+    assert "failed_predictions" in data
+    assert "prediction_response_time_ms_last" in data
+    assert "average_prediction_response_time_ms" in data

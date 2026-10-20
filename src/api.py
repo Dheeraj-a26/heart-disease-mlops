@@ -1,8 +1,10 @@
 from pathlib import Path
+from time import perf_counter
+from threading import Lock
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
 # Project paths
@@ -25,8 +27,19 @@ app = FastAPI(
         "classification model. Predictions are for educational "
         "purposes and are not medical diagnoses."
     ),
-    version="1.0.0",
+    version="1.1.0",
 )
+
+# Basic in-memory monitoring metrics
+metrics_lock = Lock()
+
+metrics = {
+    "total_requests": 0,
+    "successful_predictions": 0,
+    "failed_predictions": 0,
+    "prediction_response_time_ms_total": 0.0,
+    "prediction_response_time_ms_last": 0.0,
+}
 
 
 class HeartDiseaseInput(BaseModel):
@@ -45,11 +58,33 @@ class HeartDiseaseInput(BaseModel):
     thal: float = Field(ge=3, le=7)
 
 
+@app.middleware("http")
+async def track_requests(request: Request, call_next):
+    """Count API requests and prediction failures."""
+    with metrics_lock:
+        metrics["total_requests"] += 1
+
+    try:
+        response = await call_next(request)
+    except Exception:
+        if request.url.path == "/predict":
+            with metrics_lock:
+                metrics["failed_predictions"] += 1
+        raise
+
+    if request.url.path == "/predict" and response.status_code >= 400:
+        with metrics_lock:
+            metrics["failed_predictions"] += 1
+
+    return response
+
+
 @app.get("/")
 def home():
     return {
         "message": "Heart Disease Prediction API is running",
         "docs": "/docs",
+        "metrics": "/metrics",
     }
 
 
@@ -58,16 +93,39 @@ def health():
     return {"status": "healthy", "model_loaded": True}
 
 
+@app.get("/metrics")
+def get_metrics():
+    """Return basic API monitoring metrics."""
+    with metrics_lock:
+        result = metrics.copy()
+
+    result["average_prediction_response_time_ms"] = round(
+        result["prediction_response_time_ms_total"]
+        / result["successful_predictions"],
+        2,
+    ) if result["successful_predictions"] > 0 else 0.0
+
+    result["prediction_response_time_ms_total"] = round(
+        result["prediction_response_time_ms_total"], 2
+    )
+    result["prediction_response_time_ms_last"] = round(
+        result["prediction_response_time_ms_last"], 2
+    )
+
+    return result
+
+
 @app.post("/predict")
 def predict(input_data: HeartDiseaseInput):
+    start_time = perf_counter()
+
     try:
-        # Convert input JSON into the DataFrame expected by the model.
         input_df = pd.DataFrame([input_data.model_dump()])
 
         prediction = int(model.predict(input_df)[0])
         probabilities = model.predict_proba(input_df)[0]
 
-        return {
+        result = {
             "prediction": prediction,
             "label": (
                 "disease_present"
@@ -84,8 +142,20 @@ def predict(input_data: HeartDiseaseInput):
             ),
         }
 
+        with metrics_lock:
+            metrics["successful_predictions"] += 1
+
+        return result
+
     except (ValueError, TypeError) as exc:
         raise HTTPException(
             status_code=422,
             detail=f"Invalid prediction input: {exc}",
         ) from exc
+
+    finally:
+        elapsed_ms = (perf_counter() - start_time) * 1000
+
+        with metrics_lock:
+            metrics["prediction_response_time_ms_total"] += elapsed_ms
+            metrics["prediction_response_time_ms_last"] = elapsed_ms
